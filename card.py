@@ -8,13 +8,14 @@ class Card(QPushButton):
         #self.btn_Save.setEnabled(False)
         #self.btn_Close.setEnabled(False)
         cardList = ['A', '2','3','4','5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-        cardValue = [11, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
-        y = random.randrange(1,14)
+        self.cardValue = [11, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
+        self.y = random.randrange(1,13)
         #cardNum = random.choice(cardList)
-        self.type = cardList[y]
+        self.type = cardList[self.y]
         self.setText(self.type)
-        total = []
-        total.append(cardValue[y])
+        self.value = self.cardValue[self.y]
+        self.indexArray = []
+        self.indexArray.append(self.y)
         
 
 
