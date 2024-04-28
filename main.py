@@ -1,8 +1,8 @@
 
 import sys
 
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QLineEdit, QLCDNumber
-from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QLineEdit
+from PyQt5.QtGui import QColor, QPainter, QIntValidator
 from card import Card
 
 class Blackjack(object):
@@ -35,6 +35,12 @@ class Blackjack(object):
         #bet amount
         self.totalMoney = 0
         self.betMoney = 0
+
+        #creating arrays for totals
+        self.arrayPlayer = []
+        self.arrayDealer = []
+        self.arrayS1 = []
+        self.arrayS2 = []
         
         #buttons on main screen
         self.layout = QGridLayout()
@@ -46,12 +52,6 @@ class Blackjack(object):
         #calling newGame to show first game
         self.newGame()
 
-        #adding score label
-        #self.label = QLabel(self.window)
-        #self.label.setText("Score: ")
-        #self.label.adjustSize()
-        #self.label.move(900,900)
-        #self.scoreLabel = QLabel(self.window)
         
         #adding dealer score label
         label2 = QLabel(self.window)
@@ -92,19 +92,33 @@ class Blackjack(object):
         additionalCard = Card()
         self.layout.addWidget(additionalCard,5,self.length,1,2)
         self.length +=2
+        
         #checking for ace
-        if(additionalCard.value == 11 and self.playerTot > 11):
+        if(additionalCard.value == 11 and self.playerTot >= 11):
             additionalCard.value = 1
+
+        #getting new total and adding card to array
+        self.arrayPlayer.append(additionalCard.value)
         self.playerTot += additionalCard.value
 
-        #if(self.playerTot > 21 and )
-        
+        #checking if an ace is already in the hand
+        index = 0
+        for i in self.arrayPlayer:
+            if(self.playerTot > 21 and i == 11):
+                self.arrayPlayer[index] = 1
+                self.playerTot = self.playerTot - 10
+            index += 1
+
+
+        #adding score label
         self.scoreLabel.setText(str(self.playerTot))
         self.scoreLabel.move(1025,800)
         
         #disabiling button if total is 21 or higher
-        if(self.playerTot >= 21):
+        if(self.playerTot > 21):
             self.hitButton.setEnabled(False)
+            self.stayButton.setEnabled(False)
+            self.lost()
 
     def stay(self):
         #disabiling buttons
@@ -117,8 +131,15 @@ class Blackjack(object):
         newDealerCard = Card()
         self.layout.addWidget(newDealerCard, 0, self.dealerLength,1,2)
         self.dealerLength+=2
+
+        #checking for ace
+        if(newDealerCard.value == 11 and self.dealerTot == 11):
+            newDealerCard.value = 1
+            
+        #adding to total and adding to array
         self.dealerTot += newDealerCard.value
-        
+        self.arrayDealer.append(newDealerCard.value)
+
         #setting dealer score label
         self.dealerScoreLabel.setText(str(self.dealerTot))
         self.dealerScoreLabel.move(1025,200)
@@ -128,44 +149,96 @@ class Blackjack(object):
             moreCard = Card()
             self.layout.addWidget(moreCard, 0, self.dealerLength,1,2)
             self.dealerLength+=2
-            if(moreCard.value == 11 and self.dealerTot > 11):
+            if(moreCard.value == 11 and self.dealerTot >= 11):
                 moreCard.value = 1
+            self.arrayDealer.append(moreCard.value)
             self.dealerTot += moreCard.value
+
+            index = 0
+            for i in self.arrayDealer:
+                if(self.dealerTot > 21 and i == 11):
+                    self.arrayDealer[index] = 1
+                    self.dealerTot = self.dealerTot - 10
+                index += 1
+
             self.dealerScoreLabel.setText(str(self.dealerTot))
             self.dealerScoreLabel.move(1025,200)
         
         #disabiling stay button
         self.stayButton.setEnabled(False)
 
+        #if win statement
+        if(self.playerTot <= 21 and (self.playerTot > self.dealerTot or self.dealerTot > 21)):
+            self.win()
+        
+        #if tie statement
+        elif(self.playerTot <= 21 and self.playerTot == self.dealerTot):
+            self.tie()
+
+        #if lost 
+        else:
+            self.lost()
+        
+
+
+    def win(self):
+        #setting win window visible
         self.winWindow.setFixedSize(200,100)
         self.winWindow.setLayout(self.winLayout)
         self.winWindow.setVisible(True)
-        if(self.playerTot <= 21 and (self.playerTot > self.dealerTot or self.dealerTot > 21)):
-            self.totalMoney += self.betMoney
-            self.winLabel.setText("YOU WIN!!!")
-            self.winLabel.adjustSize()
-            self.winLabel.move(50,40)
-            self.winWindow.setStyleSheet("background-color: green;")
-        
-        elif(self.playerTot <= 21 and self.playerTot == self.dealerTot):
-            self.totalMoney = self.totalMoney
-            self.winLabel.setText("YOU TIED.")
-            self.winLabel.adjustSize()
-            self.winLabel.move(50,40)
-            self.winWindow.setStyleSheet("background-color: yellow;")
 
-        else:
-            self.totalMoney -= self.betMoney
-            self.winLabel.setText("YOU LOST :(")
-            self.winLabel.adjustSize()
-            self.winLabel.move(50,40)
-            self.winWindow.setStyleSheet("background-color: red;")
-        
+        #getting new money total
+        self.totalMoney += self.betMoney
+
+        #printing to new window
+        self.winLabel.setText("YOU WIN!!!")
+        self.winLabel.adjustSize()
+        self.winLabel.move(50,40)
+        self.winWindow.setStyleSheet("background-color: green;")
         self.betLabel.setText("Money: $" + str(self.totalMoney))
+        self.betLabel.adjustSize()
+
+    def tie(self):
+        #setting window visible
+        self.winWindow.setFixedSize(200,100)
+        self.winWindow.setLayout(self.winLayout)
+        self.winWindow.setVisible(True)
+
+        #getting new money total
+        self.totalMoney = self.totalMoney
+
+        #printing to new window
+        self.winLabel.setText("YOU TIED.")
+        self.winLabel.adjustSize()
+        self.winLabel.move(50,40)
+        self.winWindow.setStyleSheet("background-color: yellow;")
+        self.betLabel.setText("Money: $" + str(self.totalMoney))
+        self.betLabel.adjustSize()
+
+    def lost(self):
+        #setting window visible
+        self.winWindow.setFixedSize(200,100)
+        self.winWindow.setLayout(self.winLayout)
+        self.winWindow.setVisible(True)
+        
+        #getting new money total
+        self.totalMoney = self.totalMoney - self.betMoney
+        
+        #printing to new window
+        self.winLabel.setText("YOU LOST :(")
+        self.winLabel.adjustSize()
+        self.winLabel.move(50,40)
+        self.winWindow.setStyleSheet("background-color: red;")
+        self.betLabel.setText("Money: $" + str(self.totalMoney))
+        self.betLabel.adjustSize()
 
     def double(self):
-        self.betMoney = self.betMoney*2
+        #doubling bet amount
+        self.betMoney = self.betMoney + self.betMoney
+        
         self.betPerRoundLabel.setText("Bet Amount: $" + str(self.betMoney))
+        self.betPerRoundLabel.adjustSize()
+
         #disabliling buttons
         self.hitButton.setEnabled(False)
         self.splitButton.setEnabled(False)
@@ -173,30 +246,54 @@ class Blackjack(object):
         #getting another card
         doubleCard = Card()
         self.layout.addWidget(doubleCard,5,5,1,2)
+        self.arrayPlayer.append(doubleCard.value)
 
         #checking for ace
-        if(doubleCard.value == 11 and self.playerTot > 11):
+        if(doubleCard.value == 11 and self.playerTot >= 11):
             doubleCard.value = 1
 
-        #setting value
         self.playerTot += doubleCard.value
+
+        #checking for aces already in hand
+        index = 0
+        for i in self.arrayPlayer:
+            if(self.playerTot > 21 and i == 11):
+                self.arrayPlayer[index] = 1
+                self.playerTot = self.playerTot - 10
+            index += 1
+        
+        self.playerTot = 0
+
+        #setting value
+        for i in self.arrayPlayer:
+            self.playerTot+=i
+        
         self.scoreLabel.setText(str(self.playerTot))
         self.scoreLabel.move(1025,800)
 
-        #calling stay
-        self.stay()
+        if(self.playerTot > 21):
+            self.lost()
+
+        else:
+            #calling stay
+            self.stay()
+        
 
     def split(self):
+        #doubling money
         self.betMoney = self.betMoney*2
         self.betPerRoundLabel.setText("Bet Amount: $" + str(self.betMoney))
+        self.betPerRoundLabel.adjustSize()
+
         #creating hit and stay buttons for split
         self.hitButton1 = QPushButton("HIT 1")
         self.hitButton2 = QPushButton("HIT 2")
         self.stayButton1 = QPushButton("STAY 1")
         self.stayButton2 = QPushButton("STAY 2")
-        #adding another score label
         
-        
+        #clearing arrays
+        self.arrayS1.clear()
+        self.arrayS2.clear()
         
         #disabiling other buttons
         self.doubleButton.setEnabled(False)
@@ -222,22 +319,29 @@ class Blackjack(object):
         self.score2.move(50,675)
 
         #adding values
-        self.total1 = self.playerTot/2
-        self.total2 = self.playerTot/2
+        self.total1 = int(self.playerTot/2)
+        self.total2 = int(self.playerTot/2)
 
-        #printing score to screen
+        self.arrayS1.append(self.total1)
+        self.arrayS2.append(self.total2)
+
+        
         self.label.setText("")
         
+        #moving totals on screen
         self.scoreLabel.setText(str(self.total1))
         self.scoreLabel.move(150,620)
 
         self.scoreLabel2.setText(str(self.total2))
         self.scoreLabel2.move(150, 675)
 
+        #checking for clicked buttons
         self.hitButton1.clicked.connect(self.hit1)
         self.hitButton2.clicked.connect(self.hit2)
         self.stayButton1.clicked.connect(self.stay1)
         self.stayButton2.clicked.connect(self.stay2)
+
+        #height for cards
         self.height1 = 6
         self.height2 = 6
 
@@ -256,7 +360,17 @@ class Blackjack(object):
             hit1Card.value = 1
         self.total1 += hit1Card.value
 
-        #if(self.playerTot > 21 and )
+        self.arrayS1.append(hit1Card.value)
+
+        #checking for aces in hand
+        index = 0
+        for i in self.arrayS1:
+            if(self.total1 > 21 and i == 11):
+                self.arrayS1[index] = 1
+                self.total1 = self.total1 - 10
+            index += 1
+
+        
         self.scoreLabel.setText(str(self.total1))
 
         self.stayButton1.setEnabled(True)
@@ -281,15 +395,31 @@ class Blackjack(object):
         
         self.total2 += hit2Card.value
 
+        self.arrayS1.append(hit2Card.value)
+
+        #checking for aces in hand
+        index = 0
+        for i in self.arrayS2:
+            if(self.total2 > 21 and i == 11):
+                self.arrayS2[index] = 1
+                self.total2 = self.total2 - 10
+            index += 1
+
         self.scoreLabel2.setText(str(self.total2))
 
         self.stayButton2.setEnabled(True)
 
+        #disabiling buttons
         if(self.total2 >= 21):
             self.hitButton2.setEnabled(False)
 
+        if(self.total1 > 21 and self.total2 > 21):
+            self.stayButton2.setEnabled(False)
+            self.lost()
+
 
     def stay1(self):
+        #enabiling and disabiling buttons
         self.hitButton2.setEnabled(True)
         self.stayButton1.setEnabled(False)
         self.hitButton1.setEnabled(False)
@@ -302,6 +432,8 @@ class Blackjack(object):
         newDealerCard = Card()
         self.layout.addWidget(newDealerCard, 0, self.dealerLength,1,2)
         self.dealerLength+=2
+        if(newDealerCard.value == 11 and self.dealerTot >= 11):
+                newDealerCard.value = 1
         self.dealerTot += newDealerCard.value
         
         #setting dealer score label
@@ -316,8 +448,34 @@ class Blackjack(object):
             if(moreCard.value == 11 and self.dealerTot > 11):
                 moreCard.value = 1
             self.dealerTot += moreCard.value
+
+            index = 0
+            for i in self.arrayDealer:
+                if(self.dealerTot > 21 and i == 11):
+                    self.arrayPlayer[index] = 1
+                    self.dealerTot = self.dealerTot - 10
+                index += 1
+
             self.dealerScoreLabel.setText(str(self.dealerTot))
             self.dealerScoreLabel.move(1025,200)
+
+        #setting win logic for the split
+        if(self.total1 <= 21 and self.total2 <= 21 and ((self.total1 > self.dealerTot and self.total2 > self.dealerTot) or self.dealerTot > 21)):
+            self.win()
+        
+        elif(self.total1 > 21 and self.total2 > 21 or (self.total1 < self.dealerTot and self.total2 < self.dealerTot and self.dealerTot < 21) or (self.total1 < self.dealerTot and self.total2 > 21 and self.dealerTot <21) or (self.total1 > 21 and self.total2 < self.dealerTot and self.dealerTot < 21)):
+            self.lost()
+
+        elif((self.total1 == self.dealerTot or self.total2 == self.dealerTot) and (self.total1 <= 21 and self.total2 <= 21 and ((self.total1 > self.dealerTot or self.total2 > self.dealerTot)))):
+            self.totalMoney = int(self.totalMoney + (self.betMoney/2))
+            self.tie()
+
+        elif((self.total1 == self.dealerTot or self.total2 == self.dealerTot) and (self.total1 > 21 or self.total2 > 21 or (self.total1 < self.dealerTot or self.total2 < self.dealerTot))):
+            self.totalMoney = int(self.totalMoney - (self.betMoney/2))
+            self.tie()
+        else:
+            self.tie()
+        
         
 
     def bet(self):
@@ -327,8 +485,10 @@ class Blackjack(object):
         self.betLabel.setText("Money: $" + str(self.totalMoney))
         self.betLabel.adjustSize()
         self.betLabel.move(50,0)
+
         #setting enter total money window to false
         self.startWindow.setVisible(False)
+
         #setting the main window to visible
         self.window.setFixedSize(1200,1000)
         self.window.setLayout(self.layout)
@@ -336,10 +496,14 @@ class Blackjack(object):
 
         #calling bet round
         self.betRound()
-        #self.window.setVisible(True)
-        #self.betRound()
+       
 
     def newGame(self):
+        #clearing arrays
+        self.arrayPlayer.clear()
+        self.arrayDealer.clear()
+        self.arrayS1.clear()
+        self.arrayS2.clear()
         #getting rid of current cards
         for i in reversed(range(self.layout.count())):
             self.layout.itemAt(i).widget().deleteLater()
@@ -347,7 +511,7 @@ class Blackjack(object):
         self.score1.setText("")
         self.score2.setText("")
         self.scoreLabel2.setText("")
-
+        
         #calling bet round
         self.betRound()
 
@@ -357,15 +521,13 @@ class Blackjack(object):
         self.stayButton = QPushButton("STAY")
         self.splitButton = QPushButton("SPLIT")
         self.newGameButton = QPushButton("NEW GAME")
-        #object, location, size
+        
         
         #adding buttons
         self.layout.addWidget(self.hitButton, 0, 0, 1,1)
         self.layout.addWidget(self.doubleButton, 1, 0, 1,1)
         self.layout.addWidget(self.stayButton, 2, 0, 1,1)
         self.layout.addWidget(self.splitButton, 3,0,1,1)
-        #self.layout.addWidget(betMoreButton, 4,0,1,1)
-        #self.layout.addWidget(betLessButton, 5,0,1,1)
         self.layout.addWidget(self.newGameButton, 6,0,1,1)
 
         
@@ -382,6 +544,7 @@ class Blackjack(object):
         self.length = 5
         self.dealerLength = 3
         
+        
         #calling first cards onto screen
         firstCard = Card()
         secondCard= Card()
@@ -390,16 +553,25 @@ class Blackjack(object):
         self.layout.addWidget(secondCard, 5,3,1,2)
         self.layout.addWidget(dealerCard, 0,1,1,2)
 
+        #checking if both are aces
+        if(firstCard.value == 11 and secondCard.value == 11):
+            secondCard.value =1
+
+        #adding cards to array
+        self.arrayPlayer.append(firstCard.value)
+        self.arrayPlayer.append(secondCard.value)
+        self.arrayDealer.append(dealerCard.value)
+
         #score label reset
         self.label = QLabel(self.window)
         self.label.setText("Score: ")
         self.label.adjustSize()
         self.label.move(900,800)
         
-
-       # self.splitButton.setEnabled(False)
+        #disabiling split unless cards are same
+        self.splitButton.setEnabled(False)
         if(firstCard.type == secondCard.type):
-           self.splitButton.setEnabled(True)
+            self.splitButton.setEnabled(True)
 
         #setting score
         self.playerTot = firstCard.value + secondCard.value
@@ -412,6 +584,7 @@ class Blackjack(object):
         self.dealerScoreLabel.setText(str(self.dealerTot))
         self.dealerScoreLabel.move(1025,200)
 
+
         #calling hit button if hit button is clicked
         self.hitButton.clicked.connect(self.hit)
         
@@ -423,13 +596,19 @@ class Blackjack(object):
 
         self.newGameButton.clicked.connect(self.newGame)
 
-        #self.indexArray.clear()
+        
 
     #betMoney = per round bet
     #self.totalMoney = total money in game
 
     def betRound(self):
+        #creating line edit
         self.betInputBettingWindow = QLineEdit()
+
+        #validating that number inputed is valid
+        moneyCheck = QIntValidator(0, self.totalMoney)
+        self.betInputBettingWindow.setValidator(moneyCheck)
+
         #showing bet window
         self.betWindow.setFixedSize(800, 600)
         self.betWindow.setLayout(self.betLayout)
@@ -448,15 +627,25 @@ class Blackjack(object):
         
     def amountBet(self):
         #creating int for bet amount per game
-        self.betMoney = int(self.betInputBettingWindow.text())
-        if(self.totalMoney < self.betMoney):
-            self.bet()
-        self.betPerRoundLabel = QLabel(self.window)
-        self.betPerRoundLabel.setText("Bet Amount: $" + str(self.betMoney))
-        self.betPerRoundLabel.adjustSize()
-        self.betPerRoundLabel.move(50,50)
-        self.betWindow.setVisible(False)
-        self.window.setVisible(True)
+        if(self.betInputBettingWindow.hasAcceptableInput()):
+            self.betMoney = 0
+            self.betMoney = int(self.betInputBettingWindow.text())
+            
+            #creating label
+            self.betPerRoundLabel = QLabel(self.window)
+            self.betPerRoundLabel.setText("")
+            self.betPerRoundLabel.adjustSize()
+            self.betPerRoundLabel.setText("Bet Amount: $" + str(self.betMoney))
+            self.betPerRoundLabel.adjustSize()
+            self.betPerRoundLabel.move(50,50)
+            self.betWindow.setVisible(False)
+            self.window.setVisible(True)
+
+            #disabiling double and split button if total money is less than twice the bet money
+            if(self.betMoney*2 > self.totalMoney):
+                self.doubleButton.setEnabled(False)
+                self.splitButton.setEnabled(False)
+        
         #showing main window
         
 
